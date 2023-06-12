@@ -8,8 +8,10 @@ const AuthorizationError = require('../../exceptions/AuthorizationError');
 // const InvariantError = require('../../exceptions/InvariantError');
 
 class NotesService {
-  constructor() {
+  constructor(collaborationService) {
     this._pool = new Pool();
+
+    this._collaborationService = collaborationService;
   }
 
   async verifyNoteOwner(id, owner) {
@@ -17,17 +19,30 @@ class NotesService {
       text: 'SELECT * FROM notes WHERE id = $1',
       values: [id],
     };
-
     const result = await this._pool.query(query);
-
     if (!result.rows.length) {
       throw new NotFoundError('Catatan tidak ditemukan');
     }
-
     const note = result.rows[0];
-
     if (note.owner !== owner) {
       throw new AuthorizationError('Anda tidak berhak mengakses resource ini');
+    }
+  }
+
+  async verifyNoteAccess(noteId, userId) {
+    try {
+      await this.verifyNoteOwner(noteId, userId);
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+
+      // kalau balikin AuthorizationError lanjut kesini
+      try {
+        await this._collaborationService.verifyCollaborator(noteId, userId);
+      } catch {
+        throw error;
+      }
     }
   }
 
