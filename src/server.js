@@ -1,4 +1,4 @@
-/* eslint-disable import/no-extraneous-dependencies */
+// mengimpor dotenv dan menjalankan konfigurasinya
 require('dotenv').config();
 
 const Hapi = require('@hapi/hapi');
@@ -26,10 +26,10 @@ const CollaborationsService = require('./services/postgres/CollaborationsService
 const CollaborationsValidator = require('./validator/collaborations');
 
 const init = async () => {
-  const notesService = new NotesService();
+  const collaborationsService = new CollaborationsService();
+  const notesService = new NotesService(collaborationsService);
   const usersService = new UsersService();
   const authenticationsService = new AuthenticationsService();
-  const collaborationsService = new CollaborationsService();
 
   const server = Hapi.server({
     port: process.env.PORT,
@@ -41,7 +41,7 @@ const init = async () => {
     },
   });
 
-  // schema auth
+  // registrasi plugin eksternal
   await server.register([
     {
       plugin: Jwt,
@@ -55,7 +55,7 @@ const init = async () => {
       aud: false,
       iss: false,
       sub: false,
-      maxAgeSec: process.env.ACCSESS_TOKEN_AGE,
+      maxAgeSec: process.env.ACCESS_TOKEN_AGE,
     },
     validate: (artifacts) => ({
       isValid: true,
